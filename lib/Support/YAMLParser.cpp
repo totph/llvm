@@ -38,8 +38,11 @@
 #include <utility>
 
 #include <fmt/format.h>
+#include <string_view.hpp>
 
 #include <array>
+
+using StringRef = nonstd::string_view;
 
 std::string utohexstr(unsigned int c) {
   return fmt::format("{:02X}", +c);
