@@ -37,7 +37,13 @@
 #include <system_error>
 #include <utility>
 
+#include <fmt/format.h>
+
 #include <array>
+
+std::string utohexstr(unsigned int c) {
+  return fmt::format("{:02X}", +c);
+}
 
 using namespace llvm;
 using namespace yaml;
