@@ -687,7 +687,7 @@ bool yaml::scanTokens(StringRef Input) {
   return true;
 }
 
-std::string yaml::escape(StringRef Input, bool EscapePrintable) {
+std::string yaml::escape(StringRef Input) {
   std::string EscapedInput;
   for (StringRef::iterator i = Input.begin(), e = Input.end(); i != e; ++i) {
     if (*i == '\\')
@@ -734,9 +734,6 @@ std::string yaml::escape(StringRef Input, bool EscapePrintable) {
         EscapedInput += "\\L";
       else if (UnicodeScalarValue.first == 0x2029)
         EscapedInput += "\\P";
-      else if (!EscapePrintable &&
-               sys::unicode::isPrintable(UnicodeScalarValue.first))
-        EscapedInput += StringRef(i, UnicodeScalarValue.second);
       else {
         std::string HexStr = utohexstr(UnicodeScalarValue.first);
         if (HexStr.size() <= 2)
