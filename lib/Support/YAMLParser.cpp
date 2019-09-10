@@ -37,6 +37,8 @@
 #include <system_error>
 #include <utility>
 
+#include <array>
+
 using namespace llvm;
 using namespace yaml;
 
@@ -562,32 +564,37 @@ private:
 } // end namespace llvm
 
 /// encodeUTF8 - Encode \a UnicodeScalarValue in UTF-8 and append it to result.
-static void encodeUTF8( uint32_t UnicodeScalarValue
-                      , SmallVectorImpl<char> &Result) {
+size_t encodeUTF8( uint32_t UnicodeScalarValue
+                 , std::array<unsigned char, 4> &Result) {
   if (UnicodeScalarValue <= 0x7F) {
-    Result.push_back(UnicodeScalarValue & 0x7F);
+    Result[0] = (UnicodeScalarValue & 0x7F);
+    return 1;
   } else if (UnicodeScalarValue <= 0x7FF) {
     uint8_t FirstByte = 0xC0 | ((UnicodeScalarValue & 0x7C0) >> 6);
     uint8_t SecondByte = 0x80 | (UnicodeScalarValue & 0x3F);
-    Result.push_back(FirstByte);
-    Result.push_back(SecondByte);
+    Result[0] = (FirstByte);
+    Result[1] = (SecondByte);
+    return 2;
   } else if (UnicodeScalarValue <= 0xFFFF) {
     uint8_t FirstByte = 0xE0 | ((UnicodeScalarValue & 0xF000) >> 12);
     uint8_t SecondByte = 0x80 | ((UnicodeScalarValue & 0xFC0) >> 6);
     uint8_t ThirdByte = 0x80 | (UnicodeScalarValue & 0x3F);
-    Result.push_back(FirstByte);
-    Result.push_back(SecondByte);
-    Result.push_back(ThirdByte);
+    Result[0] = (FirstByte);
+    Result[1] = (SecondByte);
+    Result[2] = (ThirdByte);
+    return 3;
   } else if (UnicodeScalarValue <= 0x10FFFF) {
     uint8_t FirstByte = 0xF0 | ((UnicodeScalarValue & 0x1F0000) >> 18);
     uint8_t SecondByte = 0x80 | ((UnicodeScalarValue & 0x3F000) >> 12);
     uint8_t ThirdByte = 0x80 | ((UnicodeScalarValue & 0xFC0) >> 6);
     uint8_t FourthByte = 0x80 | (UnicodeScalarValue & 0x3F);
-    Result.push_back(FirstByte);
-    Result.push_back(SecondByte);
-    Result.push_back(ThirdByte);
-    Result.push_back(FourthByte);
+    Result[0] = (FirstByte);
+    Result[1] = (SecondByte);
+    Result[2] = (ThirdByte);
+    Result[3] = (FourthByte);
+    return 4;
   }
+  return ~size_t(0);
 }
 
 bool yaml::dumpTokens(StringRef Input, raw_ostream &OS) {
@@ -687,7 +694,7 @@ bool yaml::scanTokens(StringRef Input) {
   return true;
 }
 
-std::string yaml::escape(StringRef Input) {
+std::string escape(StringRef Input) {
   std::string EscapedInput;
   for (StringRef::iterator i = Input.begin(), e = Input.end(); i != e; ++i) {
     if (*i == '\\')
@@ -720,9 +727,9 @@ std::string yaml::escape(StringRef Input) {
         = decodeUTF8(StringRef(i, Input.end() - i));
       if (UnicodeScalarValue.second == 0) {
         // Found invalid char.
-        SmallString<4> Val;
-        encodeUTF8(0xFFFD, Val);
-        EscapedInput.insert(EscapedInput.end(), Val.begin(), Val.end());
+        std::array<unsigned char, 4> Val;
+        size_t len = encodeUTF8(0xFFFD, Val);
+        EscapedInput.insert(EscapedInput.end(), Val.begin(), Val.begin() + len);
         // FIXME: Error reporting.
         return EscapedInput;
       }
